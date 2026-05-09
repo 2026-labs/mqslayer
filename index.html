@@ -403,6 +403,8 @@ const ME = {
 //  🔊 SFX — taruh file di folder audios/
 //  Ganti file MP3-nya sesuka lo, nama file jangan diubah
 // ════════════════════════════════════════════════
+
+
 const SFX = {
   kill:        new Audio('audios/kill.mp3'),
   combo:       new Audio('audios/combo.mp3'),
@@ -413,7 +415,9 @@ const SFX = {
   highScore:   new Audio('audios/high-score.mp3'),
   ngiing:      new Audio('audios/ngiing.mp3'),
 };
-
+const BGM = new Audio('audios/bgm.mp3');
+BGM.loop   = true;
+BGM.volume = 0.35;
 // Volume default — ubah sesuka lo (0.0 - 1.0)
 SFX.kill.volume        = 0.7;
 SFX.combo.volume       = 0.8;
@@ -422,7 +426,7 @@ SFX.bite.volume        = 0.9;
 SFX.nightChange.volume = 0.6;
 SFX.gameOver.volume    = 0.8;
 SFX.highScore.volume   = 0.9;
-SFX.ngiing.volume      = 0.3;
+SFX.ngiing.volume      = 0.5;
 
 // Pakai cloneNode biar bisa overlap (kill spam, dll)
 function play(sfx) {
@@ -821,6 +825,8 @@ function startGame() {
   document.querySelectorAll('.mq,.fx-s,.fx-p,.fx-m').forEach(e => e.remove());
   go('game');
   setTimeout(() => { wave(); raf = requestAnimationFrame(tick); }, 260);
+  BGM.currentTime = 0;
+  BGM.play().catch(() => {});
 }
 
 async function endGame() {
@@ -832,6 +838,8 @@ async function endGame() {
   // 🔊 + 📳 Game over
   play(SFX.gameOver);
   haptic.error();
+  BGM.pause();
+  BGM.currentTime = 0;
 
   const isLocalNew = score > hs;
   if (isLocalNew) { hs = score; localStorage.setItem('mqs_hs', hs); }
@@ -857,6 +865,7 @@ async function endGame() {
 function togglePause() {
   paused = !paused;
   document.getElementById('pbtn').textContent = paused ? '▶️' : '⏸';
+  paused ? BGM.pause() : BGM.play().catch(() => {});
 }
 
 // Init
