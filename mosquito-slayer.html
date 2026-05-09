@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MOSQUITO SLAYER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- Telegram WebApp SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<!-- Firebase (Compat SDK — lebih simpel) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+:root{
+  --blood:#c1121f;
+  --blood2:#e63946;
+  --gold:#f4a261;
+  --gold2:#ffd166;
+  --dim:#0d0208;
+  --dark:#1a0510;
+  --mid:#2d0d1e;
+  --panel:rgba(0,0,0,0.55);
+  --border:rgba(255,255,255,0.08);
+  --text:#f1e8e8;
+  --muted:rgba(241,232,232,0.45);
+}
+
+body{
+  background:var(--dim);
+  font-family:'Rajdhani',sans-serif;
+  overflow:hidden;
+  height:100dvh;
+  width:100vw;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+}
+
+#cur{
+  position:fixed;pointer-events:none;z-index:9999;
+  font-size:30px;transform:translate(-50%,-50%);
+  display:none;transition:transform .08s;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.8));
+}
+#cur.smash{transform:translate(-50%,-50%) scale(1.5) rotate(-25deg)}
+body.playing #cur{display:block}
+
+.screen{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  transition:opacity .25s;
+}
+.screen.off{opacity:0;pointer-events:none}
+
+/* ═══ MENU ═══ */
+#menu{background:radial-gradient(ellipse at 50% 0%,#3d0a1a 0%,#0d0208 65%)}
+#menu::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.09) 3px,rgba(0,0,0,.09) 4px);pointer-events:none}
+
+.m-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:22px;padding:32px 24px;width:100%;max-width:420px}
+
+.m-bug{font-size:clamp(64px,16vw,92px);line-height:1;animation:throb 1.9s ease-in-out infinite;filter:drop-shadow(0 0 28px rgba(193,18,31,.65))}
+@keyframes throb{0%,100%{transform:scale(1) rotate(-3deg)}50%{transform:scale(1.07) rotate(3deg)}}
+
+.m-title{
+  font-family:'Black Ops One',cursive;
+  font-size:clamp(30px,8vw,50px);
+  color:var(--gold2);
+  letter-spacing:4px;text-align:center;line-height:1;
+  text-shadow:0 0 40px rgba(255,209,102,.45),0 3px 0 #7a3800;
+}
+.m-sub{font-size:12px;font-weight:700;letter-spacing:5px;color:var(--muted);text-transform:uppercase}
+
+.m-best{
+  display:flex;flex-direction:column;align-items:center;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:10px;padding:12px 36px;
+}
+.m-best-lbl{font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:2px}
+.m-best-val{font-family:'Black Ops One',cursive;font-size:36px;color:var(--gold2);line-height:1}
+
+.btn-play{
+  width:100%;max-width:260px;
+  background:var(--blood);border:none;border-radius:5px;
+  padding:17px 0;
+  font-family:'Black Ops One',cursive;
+  font-size:20px;letter-spacing:4px;color:#fff;cursor:pointer;
+  box-shadow:0 6px 0 #6b000d,0 12px 32px rgba(193,18,31,.45);
+  transform:translateY(0);transition:transform .1s,box-shadow .1s;
+}
+.btn-play:active{transform:translateY(5px);box-shadow:0 1px 0 #6b000d}
+
+.btn-ghost{
+  background:none;border:1px solid rgba(255,255,255,.18);border-radius:5px;
+  padding:10px 30px;
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:3px;
+  color:var(--muted);cursor:pointer;transition:border-color .2s,color .2s;text-transform:uppercase;
+}
+.btn-ghost:active{border-color:rgba(255,255,255,.4);color:var(--text)}
+
+.deco{display:flex;gap:6px;font-size:13px;opacity:.28}
+
+/* ═══ HOW TO ═══ */
+#howto{background:radial-gradient(ellipse at 50% 0%,#3d0a1a 0%,#0d0208 70%)}
+#howto::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.09) 3px,rgba(0,0,0,.09) 4px);pointer-events:none}
+.ht-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:32px 24px;width:100%;max-width:400px}
+.ht-title{font-family:'Black Ops One',cursive;font-size:26px;color:var(--gold2);letter-spacing:4px}
+.ht-list{list-style:none;display:flex;flex-direction:column;gap:9px;width:100%}
+.ht-list li{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:9px;padding:11px 16px;
+  display:flex;align-items:center;gap:14px;
+  font-size:15px;font-weight:600;color:rgba(241,232,232,.82);line-height:1.3;
+}
+.ht-list li em{font-size:22px;flex-shrink:0;font-style:normal}
+
+/* ═══ GAME ═══ */
+#game{background:transparent}
+
+#room{
+  position:relative;width:100vw;height:100dvh;
+  overflow:hidden;cursor:none;background:#120008;
+  transition:filter 1.3s;
+}
+
+.r-ceil{position:absolute;top:0;left:0;right:0;height:9%;background:linear-gradient(180deg,#0a0005,#1a000c);border-bottom:1px solid rgba(255,255,255,.04)}
+.r-floor{position:absolute;bottom:0;left:0;right:0;height:15%;background:linear-gradient(0deg,#080004,#1a000c);border-top:1px solid rgba(255,255,255,.04)}
+.r-wl{position:absolute;top:9%;bottom:15%;width:5%;background:linear-gradient(90deg,#0a0005,transparent)}
+.r-wr{position:absolute;top:9%;bottom:15%;right:0;width:5%;background:linear-gradient(270deg,#0a0005,transparent)}
+
+.lamp{position:absolute;top:0;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
+.lamp-cord{width:1.5px;height:55px;background:rgba(255,255,255,.22)}
+.lamp-shade{width:54px;height:36px;background:linear-gradient(180deg,#5a5a5a,#282828);border-radius:3px 3px 20px 20px;border:1px solid rgba(255,255,255,.14);position:relative;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px}
+.lamp-bulb{width:9px;height:9px;border-radius:50%;background:#ffe8a0;box-shadow:0 0 14px 5px rgba(255,220,120,.9);transition:all 1.3s}
+.lamp-beam{position:absolute;bottom:-55px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:130px solid transparent;border-right:130px solid transparent;border-top:60px solid rgba(255,240,160,.07);filter:blur(12px);transition:opacity 1.3s}
+
+.dark .lamp-bulb{background:#222;box-shadow:none}
+.dark .lamp-beam{opacity:0}
+.dark #room{background:#040001}
+.dark .r-ceil{background:linear-gradient(180deg,#020001,#060003)}
+.dark .r-floor{background:linear-gradient(0deg,#020001,#060003)}
+
+#hud{position:absolute;top:0;left:0;right:0;padding:10px 14px;display:flex;justify-content:space-between;align-items:flex-start;z-index:50;pointer-events:none}
+.hbox{background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:8px;padding:7px 14px;pointer-events:all;min-width:70px}
+.hbox-lbl{font-size:9px;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase}
+.hbox-val{font-family:'Black Ops One',cursive;font-size:22px;color:var(--gold2);line-height:1}
+
+#pbtn{background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:8px;color:var(--muted);font-size:17px;padding:8px 13px;cursor:pointer;pointer-events:all}
+
+#nbadge{position:absolute;top:66px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:3px 16px;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--muted);z-index:50;pointer-events:none;text-transform:uppercase}
+
+#bwrap{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);width:min(280px,78vw);z-index:50;text-align:center}
+.blbl{font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.btrack{height:12px;border-radius:3px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);overflow:hidden}
+#bfill{height:100%;border-radius:3px;background:linear-gradient(90deg,#e63946,#ff6b6b);transition:width .35s,background .5s}
+
+.mq{position:absolute;z-index:20;transform-origin:center;pointer-events:all}
+.mq svg{display:block}
+.mq.fake{opacity:.5;filter:blur(.7px)}
+.mq.boss{filter:drop-shadow(0 0 12px rgba(255,0,0,.9))}
+
+.fx-s{position:absolute;pointer-events:none;z-index:30;font-size:28px;animation:splatPop .55s ease-out forwards}
+@keyframes splatPop{0%{transform:scale(0) rotate(-10deg);opacity:1}55%{transform:scale(1.5) rotate(15deg);opacity:1}100%{transform:scale(1.1) rotate(8deg);opacity:0}}
+.fx-p{position:absolute;pointer-events:none;z-index:40;font-family:'Black Ops One',cursive;font-size:19px;color:var(--gold2);text-shadow:1px 1px 0 rgba(0,0,0,.5);animation:rise .8s ease-out forwards}
+.fx-m{position:absolute;pointer-events:none;z-index:40;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;color:var(--blood2);letter-spacing:1px;animation:rise .8s ease-out forwards}
+@keyframes rise{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-55px);opacity:0}}
+
+#combo{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Black Ops One',cursive;font-size:clamp(34px,10vw,62px);color:var(--gold2);text-shadow:0 0 30px rgba(255,209,102,.7),2px 2px 0 rgba(0,0,0,.5);pointer-events:none;z-index:60;opacity:0}
+#combo.pop{opacity:1;animation:burst .45s ease-out}
+@keyframes burst{0%{transform:translate(-50%,-50%) scale(.35)}65%{transform:translate(-50%,-50%) scale(1.18)}100%{transform:translate(-50%,-50%) scale(1)}}
+
+#flash{position:absolute;inset:0;background:rgba(193,18,31,.42);pointer-events:none;z-index:55;opacity:0;transition:opacity .1s}
+#flash.on{opacity:1}
+
+#nov{position:absolute;inset:0;background:rgba(0,0,0,.9);z-index:80;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .5s}
+#nov.on{opacity:1;pointer-events:all}
+.nov-inner{text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+.nov-title{font-family:'Black Ops One',cursive;font-size:clamp(26px,7vw,44px);color:var(--gold2);letter-spacing:5px}
+.nov-desc{font-size:14px;font-weight:700;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.nov-track{width:160px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-top:10px}
+.nov-fill{height:100%;background:var(--blood2);animation:load 2.1s linear forwards}
+@keyframes load{from{width:0}to{width:100%}}
+
+.rdot{position:absolute;pointer-events:none;color:rgba(255,255,255,.13);font-size:5px;letter-spacing:2px}
+
+/* ═══ GAME OVER ═══ */
+#gameover{background:radial-gradient(ellipse at 50% 0%,#3d0a1a 0%,#0d0208 70%)}
+#gameover::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.09) 3px,rgba(0,0,0,.09) 4px);pointer-events:none}
+.go-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px 24px;width:100%;max-width:360px}
+.go-skull{font-size:clamp(50px,14vw,78px);animation:shake .38s ease-in-out 3}
+@keyframes shake{0%,100%{transform:rotate(0)}30%{transform:rotate(-12deg)}70%{transform:rotate(12deg)}}
+.go-title{font-family:'Black Ops One',cursive;font-size:clamp(24px,6vw,36px);color:var(--blood2);letter-spacing:3px}
+.go-card{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:18px 26px;width:100%;display:flex;flex-direction:column;gap:11px}
+.go-row{display:flex;justify-content:space-between;align-items:center}
+.go-lbl{font-size:11px;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase;font-weight:700}
+.go-val{font-family:'Black Ops One',cursive;font-size:23px;color:var(--text)}
+.go-val.gold{color:var(--gold2)}
+.go-div{height:1px;background:var(--border)}
+.newrec{font-size:10px;font-weight:700;letter-spacing:2px;background:var(--gold2);color:#1a0510;border-radius:4px;padding:3px 8px;text-transform:uppercase;animation:rpulse .5s ease-in-out infinite alternate}
+@keyframes rpulse{from{transform:scale(1)}to{transform:scale(1.07)}}
+.hidden{display:none!important}
+
+/* Upload status */
+#upload-status{
+  font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:700;
+  text-transform:uppercase;text-align:center;min-height:16px;
+}
+</style>
+</head>
+<body>
+
+<div id="cur">🖐️</div>
+
+<!-- MENU -->
+<div class="screen" id="menu">
+  <div class="m-inner">
+    <div class="deco">💀 ☠️ 💀 ☠️ 💀</div>
+    <div class="m-bug">🦟</div>
+    <div class="m-title">MOSQUITO<br>SLAYER</div>
+    <div class="m-sub">Slap or get drained</div>
+    <div class="m-best">
+      <div class="m-best-lbl">Best Score</div>
+      <div class="m-best-val" id="hs-val">0</div>
+    </div>
+    <button class="btn-play" onclick="startGame()">SLAP NOW</button>
+    <button class="btn-ghost" onclick="go('howto')">How To Play</button>
+    <div class="deco">🩸 🩸 🩸 🩸 🩸</div>
+  </div>
+</div>
+
+<!-- HOW TO -->
+<div class="screen off" id="howto">
+  <div class="ht-inner">
+    <div class="ht-title">HOW TO PLAY</div>
+    <ul class="ht-list">
+      <li><em>🦟</em>Tap the mosquito to kill it — earn points</li>
+      <li><em>❌</em>Miss or tap a decoy — lose blood</li>
+      <li><em>🩸</em>Mosquito bites you — blood drains fast</li>
+      <li><em>⚡</em>Kill fast — rack up combo multipliers</li>
+      <li><em>🌙</em>Each night gets darker &amp; more deadly</li>
+      <li><em>💡</em>Blackout night — trust the buzz ring</li>
+    </ul>
+    <button class="btn-play" style="margin-top:6px" onclick="go('menu')">BACK</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="screen off" id="game">
+  <div id="room">
+    <div class="r-ceil"></div>
+    <div class="r-floor"></div>
+    <div class="r-wl"></div>
+    <div class="r-wr"></div>
+
+    <div class="lamp">
+      <div class="lamp-cord"></div>
+      <div class="lamp-shade">
+        <div class="lamp-bulb"></div>
+        <div class="lamp-beam"></div>
+      </div>
+    </div>
+
+    <div class="rdot" style="left:9%;top:40%">● ●</div>
+    <div class="rdot" style="left:87%;top:53%">●</div>
+    <div class="rdot" style="left:24%;top:74%">● ● ●</div>
+    <div class="rdot" style="left:74%;top:29%">●</div>
+    <div class="rdot" style="left:48%;top:82%">● ●</div>
+
+    <div id="hud">
+      <div class="hbox"><div class="hbox-lbl">Score</div><div class="hbox-val" id="s-score">0</div></div>
+      <button id="pbtn" onclick="togglePause()">⏸</button>
+      <div class="hbox"><div class="hbox-lbl">Kills</div><div class="hbox-val" id="s-kills">0</div></div>
+    </div>
+
+    <div id="nbadge">NIGHT 1</div>
+
+    <div id="bwrap">
+      <div class="blbl">🩸 Blood</div>
+      <div class="btrack"><div id="bfill"></div></div>
+    </div>
+
+    <div id="combo"></div>
+    <div id="flash"></div>
+
+    <div id="nov">
+      <div class="nov-inner">
+        <div class="nov-title" id="nov-title">NIGHT 2</div>
+        <div class="nov-desc" id="nov-desc">Lights dimming...</div>
+        <div class="nov-track"><div class="nov-fill" id="nov-fill"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="screen off" id="gameover">
+  <div class="go-inner">
+    <div class="go-skull">💀</div>
+    <div class="go-title">YOU'RE DRAINED</div>
+    <div class="go-card">
+      <div class="go-row"><span class="go-lbl">Score</span><span class="go-val gold" id="go-score">0</span></div>
+      <div class="go-row"><span class="go-lbl">Kills</span><span class="go-val" id="go-kills">0</span></div>
+      <div class="go-row"><span class="go-lbl">Night reached</span><span class="go-val" id="go-night">1</span></div>
+      <div class="go-div"></div>
+      <div class="go-row">
+        <span class="go-lbl">Best</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="go-val gold" id="go-hs">0</span>
+          <span class="newrec hidden" id="go-new">NEW!</span>
+        </div>
+      </div>
+    </div>
+    <div id="upload-status">saving score...</div>
+    <button class="btn-play" onclick="startGame()">PLAY AGAIN</button>
+    <button class="btn-ghost" onclick="go('menu')">Main Menu</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  🔥 FIREBASE CONFIG — GANTI BAGIAN INI
+//  1. Buka console.firebase.google.com
+//  2. Buat project baru
+//  3. Tambah web app
+//  4. Copy config-nya ke sini
+// ════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "GANTI_API_KEY",
+  authDomain:        "GANTI.firebaseapp.com",
+  projectId:         "GANTI_PROJECT_ID",
+  storageBucket:     "GANTI.appspot.com",
+  messagingSenderId: "GANTI",
+  appId:             "GANTI"
+};
+
+let firebaseReady = false;
+let fsDb = null;
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  fsDb = firebase.firestore();
+  firebaseReady = true;
+} catch(e) {
+  console.warn('Firebase init gagal — leaderboard dinonaktifkan:', e.message);
+}
+
+// ════════════════════════════════════════════════
+//  📲 TELEGRAM WEBAPP — ambil data user
+// ════════════════════════════════════════════════
+const tg       = window.Telegram?.WebApp;
+const tgUser   = tg?.initDataUnsafe?.user ?? {};
+
+tg?.expand?.();                     // full screen
+tg?.setHeaderColor?.('#0d0208');    // sesuain warna
+
+const ME = {
+  user_id:    String(tgUser.id ?? ('guest_' + Math.random().toString(36).slice(2,8))),
+  username:   tgUser.username   ?? null,
+  first_name: tgUser.first_name ?? 'Player',
+};
+
+// ════════════════════════════════════════════════
+//  🔊 WEB AUDIO ENGINE
+//  Suara dibuat procedural — no asset needed
+// ════════════════════════════════════════════════
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Bunyi dasar: osilator + gain envelope
+function tone(freq, endFreq, duration, type = 'sine', vol = 0.35) {
+  try {
+    const ctx  = getAudioCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    if (endFreq !== freq) {
+      osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + duration);
+    }
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + duration);
+  } catch(e) { /* bodo amat kalau gagal */ }
+}
+
+// Bunyi noise (untuk mosquito buzz)
+function noise(duration = 0.08, vol = 0.12) {
+  try {
+    const ctx    = getAudioCtx();
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+    const data   = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+    const src  = ctx.createBufferSource();
+    const gain = ctx.createGain();
+    const filt = ctx.createBiquadFilter();
+
+    src.buffer = buffer;
+    filt.type  = 'bandpass';
+    filt.frequency.value = 800;
+    filt.Q.value = 0.8;
+
+    src.connect(filt);
+    filt.connect(gain);
+    gain.connect(ctx.destination);
+
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    src.start();
+  } catch(e) {}
+}
+
+// Kumpulan sound effects
+const SFX = {
+  // 🦟 Kill — "thwack" + satisfying pop
+  kill() {
+    tone(220,  80,  0.08, 'square', 0.25);
+    setTimeout(() => tone(1100, 600, 0.12, 'sine', 0.2), 30);
+  },
+  // ✊ Combo — makin tinggi tiap level
+  combo(n) {
+    const freqs = [440, 550, 660, 880, 1100, 1320];
+    const f = freqs[Math.min(n - 2, freqs.length - 1)];
+    tone(f, f * 1.5, 0.18, 'triangle', 0.28);
+  },
+  // ❌ Miss — thud pelan
+  miss() {
+    tone(120, 60, 0.15, 'sawtooth', 0.18);
+  },
+  // 🩸 Bite — buzz + low hit
+  bite() {
+    noise(0.12, 0.18);
+    setTimeout(() => tone(180, 80, 0.25, 'square', 0.3), 40);
+  },
+  // 🌙 Night change — eerie descend
+  nightChange() {
+    tone(660, 220, 1.2, 'sine', 0.2);
+    setTimeout(() => tone(440, 110, 0.9, 'sine', 0.12), 300);
+  },
+  // 💀 Game over — dramatic drop
+  gameOver() {
+    tone(440, 110, 0.6, 'sawtooth', 0.3);
+    setTimeout(() => tone(220, 55, 0.8, 'square', 0.25), 500);
+    setTimeout(() => tone(110, 55, 1.0, 'sine',    0.2),  1100);
+  },
+  // 🏆 High score — fanfare
+  highScore() {
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((f, i) => {
+      setTimeout(() => tone(f, f, 0.2, 'triangle', 0.3), i * 140);
+    });
+  },
+  // 🦟 Ngiiing — buzz saat nyamuk spawn
+  ngiing() {
+    noise(0.06, 0.08);
+    tone(800, 1200, 0.09, 'sine', 0.06);
+  },
+};
+
+// ════════════════════════════════════════════════
+//  📳 HAPTIC FEEDBACK (Telegram WebApp API)
+// ════════════════════════════════════════════════
+const haptic = {
+  light()   { tg?.HapticFeedback?.impactOccurred('light'); },
+  medium()  { tg?.HapticFeedback?.impactOccurred('medium'); },
+  heavy()   { tg?.HapticFeedback?.impactOccurred('heavy'); },
+  success() { tg?.HapticFeedback?.notificationOccurred('success'); },
+  error()   { tg?.HapticFeedback?.notificationOccurred('error'); },
+  warning() { tg?.HapticFeedback?.notificationOccurred('warning'); },
+};
+
+// ════════════════════════════════════════════════
+//  ☁️ FIREBASE — simpan & baca skor
+// ════════════════════════════════════════════════
+async function submitScore(finalScore) {
+  const statusEl = document.getElementById('upload-status');
+  if (!firebaseReady) {
+    statusEl.textContent = '⚠️ offline — skor ga tersimpan';
+    return false;
+  }
+  statusEl.textContent = '⏳ menyimpan skor...';
+  try {
+    const ref = fsDb.collection('scores').doc(ME.user_id);
+    const doc = await ref.get();
+    const isNewGlobal = !doc.exists || finalScore > (doc.data().score ?? 0);
+
+    if (isNewGlobal) {
+      await ref.set({
+        username:   ME.username,
+        first_name: ME.first_name,
+        score:      finalScore,
+        updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      statusEl.textContent = '✅ skor tersimpan di leaderboard!';
+    } else {
+      statusEl.textContent = '📊 skor lama masih lebih tinggi';
+    }
+    return isNewGlobal;
+  } catch(e) {
+    console.warn('Gagal submit skor:', e);
+    statusEl.textContent = '❌ gagal nyimpen — cek koneksi';
+    return false;
+  }
+}
+
+// ════════════════════════════════════════════════
+//  🎮 GAME ENGINE (sama kayak sebelumnya + audio/haptic)
+// ════════════════════════════════════════════════
+let score=0,blood=100,kills=0,nightIdx=0;
+let combo=0,comboT=null;
+let mqs=[],raf=null,lastTs=null;
+let paused=false,alive=false;
+let hs=+localStorage.getItem('mqs_hs')||0;
+
+const NIGHTS=[
+  {count:1,spd:1.0, bright:1,   decoys:0,biteMs:4200,title:'NIGHT 1', desc:'Easy start...'},
+  {count:2,spd:1.35,bright:.65, decoys:1,biteMs:3500,title:'NIGHT 2', desc:'Lights getting dim...'},
+  {count:2,spd:1.8, bright:.38, decoys:2,biteMs:3000,title:'NIGHT 3', desc:'Getting dark in here'},
+  {count:3,spd:2.4, bright:.08, decoys:3,biteMs:2400,title:'BLACKOUT',desc:'No lights. Trust your ears.'},
+  {count:4,spd:3.1, bright:.03, decoys:3,biteMs:1800,title:'NIGHTMARE',desc:"They're everywhere."},
+];
+const THRESH=[0,80,210,400,640];
+
+const room    = document.getElementById('room');
+const sScore  = document.getElementById('s-score');
+const sKills  = document.getElementById('s-kills');
+const bFill   = document.getElementById('bfill');
+const comboEl = document.getElementById('combo');
+const flashEl = document.getElementById('flash');
+const nbadge  = document.getElementById('nbadge');
+const nov     = document.getElementById('nov');
+
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('off'));
+  document.getElementById(id).classList.remove('off');
+  document.body.classList.toggle('playing', id === 'game');
+}
+
+// Custom cursor
+const cur = document.getElementById('cur');
+document.addEventListener('mousemove', e => { cur.style.left = e.clientX + 'px'; cur.style.top = e.clientY + 'px'; });
+document.addEventListener('mousedown', () => {
+  cur.textContent = '✊'; cur.classList.add('smash');
+  setTimeout(() => { cur.textContent = '🖐️'; cur.classList.remove('smash'); }, 180);
+});
+
+function mqSVG(sz, fake, boss) {
+  const b = boss ? '#ff1a1a' : fake ? '#4a4a4a' : '#180808';
+  const w = boss ? 'rgba(255,80,80,.4)' : fake ? 'rgba(100,100,160,.2)' : 'rgba(70,120,255,.32)';
+  const e = boss ? '#ffff00' : '#ff2222';
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+  <ellipse cx="14" cy="21" rx="13" ry="7" fill="${w}" transform="rotate(-22,14,21)"/>
+  <ellipse cx="46" cy="21" rx="13" ry="7" fill="${w}" transform="rotate(22,46,21)"/>
+  <ellipse cx="30" cy="33" rx="7" ry="13" fill="${b}"/>
+  <circle cx="30" cy="18" r="7" fill="${b}"/>
+  <circle cx="27" cy="16" r="2.2" fill="${e}"/><circle cx="33" cy="16" r="2.2" fill="${e}"/>
+  <line x1="30" y1="25" x2="30" y2="46" stroke="${boss ? '#ff0' : '#555'}" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="23" y1="31" x2="6"  y2="40" stroke="${b}" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="23" y1="37" x2="5"  y2="47" stroke="${b}" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="37" y1="31" x2="54" y2="40" stroke="${b}" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="37" y1="37" x2="55" y2="47" stroke="${b}" stroke-width="1.2" stroke-linecap="round"/>
+  ${boss ? '<circle cx="30" cy="33" r="6" fill="rgba(255,0,0,.18)"/>' : ''}
+  </svg>`;
+}
+
+function spawn(fake, boss) {
+  const cfg = NIGHTS[nightIdx];
+  const sz  = boss ? 72 : fake ? 26 : Math.random() * 14 + 34;
+  const el  = document.createElement('div');
+  el.className = 'mq' + (fake ? ' fake' : '') + (boss ? ' boss' : '');
+  el.innerHTML = mqSVG(sz, fake, boss);
+  el.style.width  = sz + 'px';
+  el.style.height = sz + 'px';
+
+  const W = window.innerWidth, H = window.innerHeight;
+  let x = Math.random() * (W - sz);
+  let y = Math.random() * (H - sz - 150) + 85;
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+
+  const spd = cfg.spd * (0.75 + Math.random() * .55);
+  let vx = (Math.random() - .5) * spd * 2.8;
+  let vy = (Math.random() - .5) * spd * 2.8;
+  let wg = Math.random() * Math.PI * 2;
+  let bMs = cfg.biteMs * (0.75 + Math.random() * .5);
+
+  const m = { el, fake, boss, x, y, vx, vy, sz, wg, bMs, alive: true };
+  mqs.push(m);
+  room.appendChild(el);
+
+  // 🔊 Spawn sound
+  SFX.ngiing();
+
+  el.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    if (!alive || paused) return;
+    if (fake) {
+      fxM(e.clientX, e.clientY, 'DECOY −5');
+      loseBlood(13);
+      combo = 0;
+      SFX.miss();
+      haptic.warning();
+      return;
+    }
+    killMq(m, e.clientX, e.clientY);
+  });
+
+  return m;
+}
+
+function tick(ts) {
+  if (!alive) return;
+  const dt = lastTs ? Math.min((ts - lastTs) / 16, 3) : 1;
+  lastTs = ts;
+
+  if (!paused) {
+    const W = window.innerWidth, H = window.innerHeight;
+    mqs.forEach(m => {
+      if (!m.alive) return;
+      m.wg += .07 * dt;
+      m.x  += m.vx * dt + Math.sin(m.wg) * .6;
+      m.y  += m.vy * dt + Math.cos(m.wg * .65) * .4;
+      if (m.x < 0 || m.x > W - m.sz)         { m.vx *= -1; m.x = Math.max(0, Math.min(W - m.sz, m.x)); }
+      if (m.y < 75 || m.y > H - m.sz - 75)   { m.vy *= -1; m.y = Math.max(75, Math.min(H - m.sz - 75, m.y)); }
+      m.el.style.left      = m.x + 'px';
+      m.el.style.top       = m.y + 'px';
+      m.el.style.transform = `scaleX(${m.vx < 0 ? -1 : 1})`;
+
+      if (!m.fake) {
+        m.bMs -= 16 * dt;
+        if (m.bMs <= 0) {
+          bite(m);
+          m.bMs = NIGHTS[nightIdx].biteMs * (0.75 + Math.random() * .5);
+        }
+      }
+    });
+  }
+  raf = requestAnimationFrame(tick);
+}
+
+function killMq(m, cx, cy) {
+  if (!m.alive) return;
+  m.alive = false;
+  m.el.remove();
+  mqs = mqs.filter(x => x !== m);
+
+  kills++;
+  sKills.textContent = kills;
+
+  combo++;
+  clearTimeout(comboT);
+  comboT = setTimeout(() => combo = 0, 1700);
+
+  const pts = m.boss ? 60 : 10 * Math.max(1, combo);
+  score += pts;
+  sScore.textContent = score;
+
+  // 🔊 + 📳 Kill feedback
+  SFX.kill();
+  haptic.medium();
+
+  if (combo >= 2) {
+    comboEl.textContent = `×${combo} COMBO`;
+    comboEl.classList.remove('pop');
+    void comboEl.offsetWidth;
+    comboEl.classList.add('pop');
+    setTimeout(() => comboEl.classList.remove('pop'), 580);
+
+    // 🔊 Combo sound — makin tinggi
+    SFX.combo(combo);
+    haptic.heavy();
+  }
+
+  fxP(cx, cy - 22, `+${pts}`);
+  fxS(cx, cy);
+  checkNight();
+  setTimeout(() => { if (alive) wave(); }, 680);
+}
+
+function bite(m) {
+  flashEl.classList.add('on');
+  setTimeout(() => flashEl.classList.remove('on'), 175);
+
+  // 🔊 + 📳 Bite feedback
+  SFX.bite();
+  haptic.heavy();
+
+  loseBlood(m.boss ? 22 : 11);
+  fxM(m.x + m.sz / 2, m.y, '🩸 BITTEN!');
+}
+
+function loseBlood(n) {
+  blood = Math.max(0, blood - n);
+  bFill.style.width = blood + '%';
+  if (blood <= 50) bFill.style.background = 'linear-gradient(90deg,#f4a261,#f77f00)';
+  if (blood <= 25) bFill.style.background = 'linear-gradient(90deg,#c1121f,#e63946)';
+  if (blood <= 0)  endGame();
+}
+
+room.addEventListener('pointerdown', e => {
+  if (!alive || paused) return;
+  const cl = e.target.classList;
+  if (e.target === room || cl.contains('r-ceil') || cl.contains('r-floor') ||
+      cl.contains('r-wl') || cl.contains('r-wr') || cl.contains('rdot') ||
+      cl.contains('lamp-cord') || cl.contains('lamp-shade') || cl.contains('lamp-beam')) {
+    fxM(e.clientX, e.clientY, 'MISS!');
+    loseBlood(4);
+    combo = 0;
+
+    // 🔊 + 📳 Miss feedback
+    SFX.miss();
+    haptic.light();
+  }
+});
+
+function fxS(x, y) {
+  const el = document.createElement('div');
+  el.className = 'fx-s';
+  el.textContent = ['💥','🩸','👋','✊'][Math.floor(Math.random() * 4)];
+  el.style.cssText = `left:${x - 16}px;top:${y - 16}px`;
+  room.appendChild(el);
+  setTimeout(() => el.remove(), 620);
+}
+function fxP(x, y, t) {
+  const el = document.createElement('div');
+  el.className = 'fx-p';
+  el.textContent = t;
+  el.style.cssText = `left:${x}px;top:${y}px`;
+  room.appendChild(el);
+  setTimeout(() => el.remove(), 850);
+}
+function fxM(x, y, t) {
+  const el = document.createElement('div');
+  el.className = 'fx-m';
+  el.textContent = t;
+  el.style.cssText = `left:${x - 20}px;top:${y - 20}px`;
+  room.appendChild(el);
+  setTimeout(() => el.remove(), 850);
+}
+
+function checkNight() {
+  const next = nightIdx + 1;
+  if (next < NIGHTS.length && score >= THRESH[next]) advNight(next);
+}
+
+function advNight(idx) {
+  nightIdx = idx;
+  paused   = true;
+  const cfg = NIGHTS[idx];
+
+  mqs.forEach(m => m.el && m.el.remove());
+  mqs = [];
+
+  document.getElementById('nov-title').textContent = cfg.title;
+  document.getElementById('nov-desc').textContent  = cfg.desc;
+  const nf = document.getElementById('nov-fill');
+  nf.style.animation = 'none';
+  void nf.offsetWidth;
+  nf.style.animation = 'load 2.1s linear forwards';
+
+  nov.classList.add('on');
+  nbadge.textContent    = cfg.title;
+  room.style.filter     = `brightness(${cfg.bright})`;
+  if (idx >= 3) room.classList.add('dark'); else room.classList.remove('dark');
+
+  // 🔊 Night change sound
+  SFX.nightChange();
+  haptic.warning();
+
+  setTimeout(() => { nov.classList.remove('on'); paused = false; wave(); }, 2350);
+}
+
+function wave() {
+  if (!alive) return;
+  const cfg  = NIGHTS[nightIdx];
+  const cur  = mqs.filter(m => m.alive && !m.fake).length;
+  const need = cfg.count - cur;
+  for (let i = 0; i < need; i++) setTimeout(() => { if (alive) spawn(false, nightIdx >= 4 && Math.random() < .25); }, i * 280);
+  const cf = mqs.filter(m => m.fake).length;
+  for (let i = cf; i < cfg.decoys; i++) setTimeout(() => { if (alive) spawn(true, false); }, i * 180 + 420);
+}
+
+function startGame() {
+  // Unlock AudioContext on first user gesture
+  if (!audioCtx) audioCtx = new AudioCtx();
+
+  score = 0; blood = 100; kills = 0; nightIdx = 0; combo = 0;
+  mqs = []; lastTs = null; alive = true; paused = false;
+  sScore.textContent = '0';
+  sKills.textContent = '0';
+  bFill.style.width      = '100%';
+  bFill.style.background = 'linear-gradient(90deg,#e63946,#ff6b6b)';
+  room.style.filter = 'brightness(1)';
+  room.classList.remove('dark');
+  nbadge.textContent = 'NIGHT 1';
+  nov.classList.remove('on');
+
+  document.querySelectorAll('.mq,.fx-s,.fx-p,.fx-m').forEach(e => e.remove());
+  go('game');
+  setTimeout(() => { wave(); raf = requestAnimationFrame(tick); }, 260);
+}
+
+async function endGame() {
+  alive = false;
+  cancelAnimationFrame(raf);
+  mqs.forEach(m => m.el && m.el.remove());
+  mqs = [];
+
+  // 🔊 + 📳 Game over
+  SFX.gameOver();
+  haptic.error();
+
+  const isLocalNew = score > hs;
+  if (isLocalNew) { hs = score; localStorage.setItem('mqs_hs', hs); }
+
+  document.getElementById('go-score').textContent = score;
+  document.getElementById('go-kills').textContent = kills;
+  document.getElementById('go-night').textContent = nightIdx + 1;
+  document.getElementById('go-hs').textContent    = hs;
+  document.getElementById('hs-val').textContent   = hs;
+  document.getElementById('go-new').classList.toggle('hidden', !isLocalNew);
+  document.getElementById('upload-status').textContent = '';
+
+  setTimeout(() => go('gameover'), 420);
+
+  // Upload ke Firebase (async, ga blocking)
+  const isGlobalNew = await submitScore(score);
+  if (isGlobalNew) {
+    SFX.highScore();
+    haptic.success();
+  }
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pbtn').textContent = paused ? '▶️' : '⏸';
+}
+
+// Init
+document.getElementById('hs-val').textContent = hs;
+document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+document.addEventListener('touchstart', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+</script>
+</body>
+</html>
