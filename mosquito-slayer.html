@@ -9,7 +9,7 @@
 
 <!-- Telegram WebApp SDK -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<audio id="bgm" src="audios/nokia-arabic-clean.mp3" loop preload="auto"></audio>
+
 <!-- Firebase (Compat SDK — lebih simpel) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -212,6 +212,27 @@ body.playing #cur{display:block}
   font-size:10px;letter-spacing:2px;color:var(--muted);font-weight:700;
   text-transform:uppercase;text-align:center;min-height:16px;
 }
+
+/* ═══ LEADERBOARD ═══ */
+#lb{background:radial-gradient(ellipse at 50% 0%,#3d0a1a 0%,#0d0208 70%)}
+#lb::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.09) 3px,rgba(0,0,0,.09) 4px);pointer-events:none}
+.lb-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:28px 20px;width:100%;max-width:420px;height:100dvh;overflow:hidden}
+.lb-title{font-family:'Black Ops One',cursive;font-size:26px;color:var(--gold2);letter-spacing:4px;flex-shrink:0}
+.lb-list{width:100%;display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1;padding-right:2px}
+.lb-list::-webkit-scrollbar{width:3px}
+.lb-list::-webkit-scrollbar-thumb{background:var(--blood);border-radius:2px}
+.lb-row{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:9px;padding:10px 14px;
+}
+.lb-row.me{border-color:rgba(255,209,102,.4);background:rgba(255,209,102,.06)}
+.lb-rank{font-family:'Black Ops One',cursive;font-size:15px;color:var(--muted);min-width:28px;text-align:center;flex-shrink:0}
+.lb-name{font-size:14px;font-weight:700;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-score{font-family:'Black Ops One',cursive;font-size:16px;color:var(--gold2);flex-shrink:0}
+.lb-empty{color:var(--muted);font-size:14px;font-weight:700;letter-spacing:2px;text-align:center;margin-top:40px}
+.lb-loading{color:var(--muted);font-size:12px;letter-spacing:3px;text-transform:uppercase;text-align:center;margin-top:40px;animation:pulse 1s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.4}to{opacity:1}}
 </style>
 </head>
 <body>
@@ -231,7 +252,19 @@ body.playing #cur{display:block}
     </div>
     <button class="btn-play" onclick="startGame()">SLAP NOW</button>
     <button class="btn-ghost" onclick="go('howto')">How To Play</button>
+    <button class="btn-ghost" onclick="openLB()">🏆 Leaderboard</button>
     <div class="deco">🩸 🩸 🩸 🩸 🩸</div>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="screen off" id="lb">
+  <div class="lb-inner">
+    <div class="lb-title">🏆 LEADERBOARD</div>
+    <div class="lb-list" id="lb-list">
+      <div class="lb-loading" id="lb-loading">loading...</div>
+    </div>
+    <button class="btn-ghost" style="flex-shrink:0;width:100%;max-width:260px" onclick="go('menu')">← BACK</button>
   </div>
 </div>
 
@@ -332,12 +365,12 @@ body.playing #cur{display:block}
 //  4. Copy config-nya ke sini
 // ════════════════════════════════════════════════
 const firebaseConfig = {
-  apiKey:            "GANTI_API_KEY",
-  authDomain:        "GANTI.firebaseapp.com",
-  projectId:         "GANTI_PROJECT_ID",
-  storageBucket:     "GANTI.appspot.com",
-  messagingSenderId: "GANTI",
-  appId:             "GANTI"
+  apiKey:            "AIzaSyC2MNOOd6V_MfGNFfuelMgHWNcLWp9r7y8",
+  authDomain:        "sagasa-1356e.firebaseapp.com",
+  projectId:         "sagasa-1356e",
+  storageBucket:     "sagasa-1356e.firebasestorage.app",
+  messagingSenderId: "877744589355",
+  appId:             "1:877744589355:web:c9a407b2bdcfba6564f86e"
 };
 
 let firebaseReady = false;
@@ -367,113 +400,36 @@ const ME = {
 };
 
 // ════════════════════════════════════════════════
-//  🔊 WEB AUDIO ENGINE
-//  Suara dibuat procedural — no asset needed
+//  🔊 SFX — taruh file di folder audios/
+//  Ganti file MP3-nya sesuka lo, nama file jangan diubah
 // ════════════════════════════════════════════════
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let audioCtx = null;
-
-function getAudioCtx() {
-  if (!audioCtx) audioCtx = new AudioCtx();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
-
-// Bunyi dasar: osilator + gain envelope
-function tone(freq, endFreq, duration, type = 'sine', vol = 0.35) {
-  try {
-    const ctx  = getAudioCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    if (endFreq !== freq) {
-      osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + duration);
-    }
-    gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + duration);
-  } catch(e) { /* bodo amat kalau gagal */ }
-}
-
-// Bunyi noise (untuk mosquito buzz)
-function noise(duration = 0.08, vol = 0.12) {
-  try {
-    const ctx    = getAudioCtx();
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
-    const data   = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-
-    const src  = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    const filt = ctx.createBiquadFilter();
-
-    src.buffer = buffer;
-    filt.type  = 'bandpass';
-    filt.frequency.value = 800;
-    filt.Q.value = 0.8;
-
-    src.connect(filt);
-    filt.connect(gain);
-    gain.connect(ctx.destination);
-
-    gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-    src.start();
-  } catch(e) {}
-}
-
-// Kumpulan sound effects
 const SFX = {
-  // 🦟 Kill — "thwack" + satisfying pop
-  kill() {
-    tone(220,  80,  0.08, 'square', 0.25);
-    setTimeout(() => tone(1100, 600, 0.12, 'sine', 0.2), 30);
-  },
-  // ✊ Combo — makin tinggi tiap level
-  combo(n) {
-    const freqs = [440, 550, 660, 880, 1100, 1320];
-    const f = freqs[Math.min(n - 2, freqs.length - 1)];
-    tone(f, f * 1.5, 0.18, 'triangle', 0.28);
-  },
-  // ❌ Miss — thud pelan
-  miss() {
-    tone(120, 60, 0.15, 'sawtooth', 0.18);
-  },
-  // 🩸 Bite — buzz + low hit
-  bite() {
-    noise(0.12, 0.18);
-    setTimeout(() => tone(180, 80, 0.25, 'square', 0.3), 40);
-  },
-  // 🌙 Night change — eerie descend
-  nightChange() {
-    tone(660, 220, 1.2, 'sine', 0.2);
-    setTimeout(() => tone(440, 110, 0.9, 'sine', 0.12), 300);
-  },
-  // 💀 Game over — dramatic drop
-  gameOver() {
-    tone(440, 110, 0.6, 'sawtooth', 0.3);
-    setTimeout(() => tone(220, 55, 0.8, 'square', 0.25), 500);
-    setTimeout(() => tone(110, 55, 1.0, 'sine',    0.2),  1100);
-  },
-  // 🏆 High score — fanfare
-  highScore() {
-    const notes = [523, 659, 784, 1047];
-    notes.forEach((f, i) => {
-      setTimeout(() => tone(f, f, 0.2, 'triangle', 0.3), i * 140);
-    });
-  },
-  // 🦟 Ngiiing — buzz saat nyamuk spawn
-  ngiing() {
-    noise(0.06, 0.08);
-    tone(800, 1200, 0.09, 'sine', 0.06);
-  },
+  kill:        new Audio('audios/kill.mp3'),
+  combo:       new Audio('audios/combo.mp3'),
+  miss:        new Audio('audios/miss.mp3'),
+  bite:        new Audio('audios/bite.mp3'),
+  nightChange: new Audio('audios/night-change.mp3'),
+  gameOver:    new Audio('audios/game-over.mp3'),
+  highScore:   new Audio('audios/high-score.mp3'),
+  ngiing:      new Audio('audios/ngiing.mp3'),
 };
+
+// Volume default — ubah sesuka lo (0.0 - 1.0)
+SFX.kill.volume        = 0.7;
+SFX.combo.volume       = 0.8;
+SFX.miss.volume        = 0.5;
+SFX.bite.volume        = 0.9;
+SFX.nightChange.volume = 0.6;
+SFX.gameOver.volume    = 0.8;
+SFX.highScore.volume   = 0.9;
+SFX.ngiing.volume      = 0.3;
+
+// Pakai cloneNode biar bisa overlap (kill spam, dll)
+function play(sfx) {
+  const s = sfx.cloneNode();
+  s.volume = sfx.volume;
+  s.play().catch(() => {});
+}
 
 // ════════════════════════════════════════════════
 //  📳 HAPTIC FEEDBACK (Telegram WebApp API)
@@ -493,10 +449,10 @@ const haptic = {
 async function submitScore(finalScore) {
   const statusEl = document.getElementById('upload-status');
   if (!firebaseReady) {
-    statusEl.textContent = '⚠️ offline — skor ga tersimpan';
+    statusEl.textContent = '⚠️ offline';
     return false;
   }
-  statusEl.textContent = '⏳ menyimpan skor...';
+  statusEl.textContent = '⏳ saving...';
   try {
     const ref = fsDb.collection('scores').doc(ME.user_id);
     const doc = await ref.get();
@@ -509,14 +465,14 @@ async function submitScore(finalScore) {
         score:      finalScore,
         updated_at: firebase.firestore.FieldValue.serverTimestamp(),
       });
-      statusEl.textContent = '✅ skor tersimpan di leaderboard!';
+      statusEl.textContent = '✅ score saved to leaderboard!';
     } else {
-      statusEl.textContent = '📊 skor lama masih lebih tinggi';
+      statusEl.textContent = '📊 ok';
     }
     return isNewGlobal;
   } catch(e) {
     console.warn('Gagal submit skor:', e);
-    statusEl.textContent = '❌ gagal nyimpen — cek koneksi';
+    statusEl.textContent = '❌ no connection';
     return false;
   }
 }
@@ -607,7 +563,7 @@ function spawn(fake, boss) {
   room.appendChild(el);
 
   // 🔊 Spawn sound
-  SFX.ngiing();
+  play(SFX.ngiing);
 
   el.addEventListener('pointerdown', e => {
     e.stopPropagation();
@@ -616,8 +572,7 @@ function spawn(fake, boss) {
       fxM(e.clientX, e.clientY, 'DECOY −5');
       loseBlood(13);
       combo = 0;
-      SFX.miss();
-      haptic.warning();
+      play(SFX.miss);
       return;
     }
     killMq(m, e.clientX, e.clientY);
@@ -674,7 +629,7 @@ function killMq(m, cx, cy) {
   sScore.textContent = score;
 
   // 🔊 + 📳 Kill feedback
-  SFX.kill();
+  play(SFX.kill);
   haptic.medium();
 
   if (combo >= 2) {
@@ -685,7 +640,7 @@ function killMq(m, cx, cy) {
     setTimeout(() => comboEl.classList.remove('pop'), 580);
 
     // 🔊 Combo sound — makin tinggi
-    SFX.combo(combo);
+    play(SFX.combo);
     haptic.heavy();
   }
 
@@ -700,7 +655,7 @@ function bite(m) {
   setTimeout(() => flashEl.classList.remove('on'), 175);
 
   // 🔊 + 📳 Bite feedback
-  SFX.bite();
+  play(SFX.bite);
   haptic.heavy();
 
   loseBlood(m.boss ? 22 : 11);
@@ -726,7 +681,7 @@ room.addEventListener('pointerdown', e => {
     combo = 0;
 
     // 🔊 + 📳 Miss feedback
-    SFX.miss();
+    play(SFX.miss);
     haptic.light();
   }
 });
@@ -782,7 +737,7 @@ function advNight(idx) {
   if (idx >= 3) room.classList.add('dark'); else room.classList.remove('dark');
 
   // 🔊 Night change sound
-  SFX.nightChange();
+  play(SFX.nightChange);
   haptic.warning();
 
   setTimeout(() => { nov.classList.remove('on'); paused = false; wave(); }, 2350);
@@ -798,10 +753,60 @@ function wave() {
   for (let i = cf; i < cfg.decoys; i++) setTimeout(() => { if (alive) spawn(true, false); }, i * 180 + 420);
 }
 
-function startGame() {
-  // Unlock AudioContext on first user gesture
-  if (!audioCtx) audioCtx = new AudioCtx();
+// ════════════════════════════════════════════════
+//  🏆 LEADERBOARD — query langsung dari Firestore
+// ════════════════════════════════════════════════
+async function openLB() {
+  go('lb');
+  const listEl    = document.getElementById('lb-list');
+  const loadingEl = document.getElementById('lb-loading');
 
+  listEl.innerHTML = '<div class="lb-loading" id="lb-loading">loading...</div>';
+
+  if (!firebaseReady) {
+    listEl.innerHTML = '<div class="lb-empty">⚠️ Fail</div>';
+    return;
+  }
+
+  try {
+    const snap = await fsDb.collection('scores')
+      .orderBy('score', 'desc')
+      .limit(20)
+      .get();
+
+    if (snap.empty) {
+      listEl.innerHTML = '<div class="lb-empty">Empty 👻</div>';
+      return;
+    }
+
+    const medals = ['🥇','🥈','🥉'];
+    let html = '';
+    let rank = 0;
+
+    snap.forEach(docSnap => {
+      rank++;
+      const d      = docSnap.data();
+      const isMe   = docSnap.id === ME.user_id;
+      const name   = d.username ? `@${d.username}` : `${d.first_name ?? 'Player'} (#${String(docSnap.id).slice(-4)})`;
+      const rankTx = medals[rank - 1] ?? rank;
+      const score  = (d.score ?? 0).toLocaleString('id-ID');
+
+      html += `<div class="lb-row${isMe ? ' me' : ''}">
+        <span class="lb-rank">${rankTx}</span>
+        <span class="lb-name">${name}${isMe ? ' 👈' : ''}</span>
+        <span class="lb-score">${score}</span>
+      </div>`;
+    });
+
+    listEl.innerHTML = html;
+
+  } catch(e) {
+    console.error(e);
+    listEl.innerHTML = '<div class="lb-empty">❌ Gagal load data</div>';
+  }
+}
+
+function startGame() {
   score = 0; blood = 100; kills = 0; nightIdx = 0; combo = 0;
   mqs = []; lastTs = null; alive = true; paused = false;
   sScore.textContent = '0';
@@ -825,7 +830,7 @@ async function endGame() {
   mqs = [];
 
   // 🔊 + 📳 Game over
-  SFX.gameOver();
+  play(SFX.gameOver);
   haptic.error();
 
   const isLocalNew = score > hs;
@@ -844,7 +849,7 @@ async function endGame() {
   // Upload ke Firebase (async, ga blocking)
   const isGlobalNew = await submitScore(score);
   if (isGlobalNew) {
-    SFX.highScore();
+    play(SFX.highScore);
     haptic.success();
   }
 }
