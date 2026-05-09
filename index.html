@@ -397,8 +397,9 @@ const ME = {
   user_id:    String(tgUser.id ?? ('guest_' + Math.random().toString(36).slice(2,8))),
   username:   tgUser.username   ?? null,
   first_name: tgUser.first_name ?? 'Player',
+  
 };
-
+const tgChat = tg?.initDataUnsafe?.chat ?? null; // null kalau dibuka dari private
 // ════════════════════════════════════════════════
 //  🔊 SFX — taruh file di folder audios/
 //  Ganti file MP3-nya sesuka lo, nama file jangan diubah
@@ -463,14 +464,27 @@ async function submitScore(finalScore) {
     const isNewGlobal = !doc.exists || finalScore > (doc.data().score ?? 0);
 
     if (isNewGlobal) {
-      await ref.set({
+      const data = {
         username:   ME.username,
         first_name: ME.first_name,
         score:      finalScore,
         updated_at: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+
+      // track which group this was played from
+      if (tgChat?.id) {
+        data.group_ids = firebase.firestore.FieldValue.arrayUnion(String(tgChat.id));
+      }
+
+      await ref.set(data, { merge: true });
       statusEl.textContent = '✅ score saved to leaderboard!';
     } else {
+      // score not a new best, but still track the group
+      if (tgChat?.id) {
+        await ref.set({
+          group_ids: firebase.firestore.FieldValue.arrayUnion(String(tgChat.id))
+        }, { merge: true });
+      }
       statusEl.textContent = '📊 ok';
     }
     return isNewGlobal;
