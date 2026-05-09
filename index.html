@@ -399,8 +399,11 @@ const ME = {
   first_name: tgUser.first_name ?? 'Player',
   
 };
-const tgChat = tg?.initDataUnsafe?.chat ?? null; // null kalau dibuka dari private
-// ════════════════════════════════════════════════
+const urlParams      = new URLSearchParams(window.location.search);
+const groupIdFromUrl = urlParams.get('gid');
+const tgChat         = groupIdFromUrl
+  ? { id: groupIdFromUrl }
+  : tg?.initDataUnsafe?.chat ?? null;// ════════════════════════════════════════════════
 //  🔊 SFX — taruh file di folder audios/
 //  Ganti file MP3-nya sesuka lo, nama file jangan diubah
 // ════════════════════════════════════════════════
@@ -421,7 +424,7 @@ BGM.loop   = true;
 BGM.volume = 0.35;
 // Volume default — ubah sesuka lo (0.0 - 1.0)
 SFX.kill.volume        = 0.7;
-SFX.combo.volume       = 0.8;
+SFX.combo.volume       = 0.7;
 SFX.miss.volume        = 0.5;
 SFX.bite.volume        = 0.9;
 SFX.nightChange.volume = 0.6;
