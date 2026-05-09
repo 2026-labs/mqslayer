@@ -50,7 +50,7 @@ bot.onText(/\/top(@\w+)?$/, async (msg) => {
       .get();
 
     if (snap.empty) {
-      return bot.sendMessage(msg.chat.id, '📭 Belum ada yang main nih. Ayo duluan!');
+      return bot.sendMessage(msg.chat.id, '📭 Empty!');
     }
 
     const medals = ['🥇', '🥈', '🥉'];
@@ -68,14 +68,14 @@ bot.onText(/\/top(@\w+)?$/, async (msg) => {
       '━━━━━━━━━━━━━━━━━━',
       ...rows,
       '',
-      '`/myscore` — lihat skor kamu',
+      '`/myscore` — score',
     ].join('\n');
 
     bot.sendMessage(msg.chat.id, text, { parse_mode: 'Markdown' });
 
   } catch(e) {
     console.error('top error:', e);
-    bot.sendMessage(msg.chat.id, '❌ Gagal ngambil data. Coba lagi ya.');
+    bot.sendMessage(msg.chat.id, '❌ fail.');
   }
 });
 
@@ -102,7 +102,7 @@ bot.onText(/\/myscore(@\w+)?$/, async (msg) => {
 
     if (!userData) {
       return bot.sendMessage(msg.chat.id,
-        `😴 *${msg.from.first_name}*, kamu belum pernah main!\nMain dulu di bot ini ya 🦟`,
+        `😴 *${msg.from.first_name}*, no data!\nPlay first 🦟`,
         { parse_mode: 'Markdown' }
       );
     }
@@ -112,7 +112,7 @@ bot.onText(/\/myscore(@\w+)?$/, async (msg) => {
     const medal  = medals[rank] ?? '';
 
     bot.sendMessage(msg.chat.id,
-      `🦟 *Skor kamu*\n\n` +
+      `🦟 *your score*\n\n` +
       `👤 ${name}\n` +
       `🏅 Rank: *#${rank}* ${medal}\n` +
       `🎯 Best Score: *${userData.score.toLocaleString('id-ID')}*`,
@@ -121,7 +121,7 @@ bot.onText(/\/myscore(@\w+)?$/, async (msg) => {
 
   } catch(e) {
     console.error('myscore error:', e);
-    bot.sendMessage(msg.chat.id, '❌ Gagal ngambil data.');
+    bot.sendMessage(msg.chat.id, '❌ Fail.');
   }
 });
 
@@ -129,10 +129,10 @@ bot.onText(/\/myscore(@\w+)?$/, async (msg) => {
 bot.onText(/\/start|\/help/, (msg) => {
   bot.sendMessage(msg.chat.id,
     `🦟 *MOSQUITO SLAYER BOT*\n\n` +
-    `Perintah yang tersedia:\n` +
-    `/top — lihat leaderboard top 20\n` +
-    `/myscore — lihat rank & skor kamu\n\n` +
-    `Main gamenya di WebApp bot!`,
+    `commands:\n` +
+    `/top — leaderboard top 20\n` +
+    `/myscore — your rank\n\n` +
+    `nice play, have fun!`,
     { parse_mode: 'Markdown' }
   );
 });
