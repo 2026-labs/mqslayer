@@ -393,17 +393,20 @@ const tgUser   = tg?.initDataUnsafe?.user ?? {};
 tg?.expand?.();                     // full screen
 tg?.setHeaderColor?.('#0d0208');    // sesuain warna
 
-const ME = {
-  user_id:    String(tgUser.id ?? ('guest_' + Math.random().toString(36).slice(2,8))),
-  username:   tgUser.username   ?? null,
-  first_name: tgUser.first_name ?? 'Player',
-  
-};
 const urlParams      = new URLSearchParams(window.location.search);
 const groupIdFromUrl = urlParams.get('gid');
-const tgChat         = groupIdFromUrl
-  ? { id: groupIdFromUrl }
-  : tg?.initDataUnsafe?.chat ?? null;// ════════════════════════════════════════════════
+const tgChat         = groupIdFromUrl ? { id: groupIdFromUrl } : tg?.initDataUnsafe?.chat ?? null;
+
+// override ME kalau ada uid di URL (dibuka dari grup)
+const uidFromUrl = urlParams.get('uid');
+if (uidFromUrl) {
+  ME.user_id    = uidFromUrl;
+  ME.first_name = urlParams.get('name') ?? ME.first_name;
+  ME.username   = urlParams.get('uname') || null;
+}
+  
+  
+  // ════════════════════════════════════════════════
 //  🔊 SFX — taruh file di folder audios/
 //  Ganti file MP3-nya sesuka lo, nama file jangan diubah
 // ════════════════════════════════════════════════
@@ -455,6 +458,10 @@ const haptic = {
 //  ☁️ FIREBASE — simpan & baca skor
 // ════════════════════════════════════════════════
 async function submitScore(finalScore) {
+  console.log('=== SUBMIT DEBUG ===');
+  console.log('user_id:', ME.user_id);
+  console.log('tgChat:', tgChat);
+  console.log('score:', finalScore);
   const statusEl = document.getElementById('upload-status');
   if (!firebaseReady) {
     statusEl.textContent = '⚠️ offline';
